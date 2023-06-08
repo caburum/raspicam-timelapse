@@ -26,11 +26,14 @@ var config = {
 	capturePath: __dirname + '/../capture',
 	captureFolder: 'default',
 	timelapseInterval: 10,
+	/** @type {'normal'|'sport'|'long'} */
 	exposure: 'auto',
 	ev: 0,
 	iso: 100,
 	shutterSpeed: 'auto',
+	/** @type {'auto'|'incandescent'|'tungsten'|'fluorescent'|'indoor'|'daylight'|'cloudy'|'custom'} */
 	awb: 'auto',
+	// both must be set to work
 	awbRedGain: 'auto',
 	awbBlueGain: 'auto',
 	hflip: false,
@@ -39,7 +42,7 @@ var config = {
 	height: 1080,
 	thumbnailWidth: 480,
 	thumbnailHeight: 270,
-	jpegQuality: 100,
+	jpegQuality: 93,
 };
 
 function loadConfig() {
@@ -142,7 +145,8 @@ var status = {
 	uptime: { title: 'Uptime', value: 'unknown', type: 'default' },
 };
 
-var cameraDetected = vcgencmd.getCamera().detected;
+// var cameraDetected = vcgencmd.getCamera().detected;
+var cameraDetected = isCameraAvailable();
 
 /** @param partial {boolean} skip longer updates */
 function updateStatus(partial) {
@@ -152,7 +156,7 @@ function updateStatus(partial) {
 	status.latestPicture.value = previewImage ? previewImageInfo : '(none)';
 	status.latestPicture.type = previewImage ? 'success' : 'danger';
 
-	if (!partial) cameraDetected = vcgencmd.getCamera().detected;
+	// if (!partial) cameraDetected = vcgencmd.getCamera().detected;
 
 	if (!cameraDetected) {
 		status.captureMode.value = 'No camera detected';
@@ -242,11 +246,14 @@ function generateDaemonArguments() {
 	var raspistillOptions = {
 		width: config.width,
 		height: config.height,
+
 		encoding: 'jpg',
 		quality: config.jpegQuality,
+		exif: null,
+		datetime: null, // name files with MMDDhhmmss
 		thumb: config.thumbnailWidth + ':' + config.thumbnailHeight + ':70',
 		output: config.capturePath + '/' + config.captureFolder + '/img_%04d.jpg',
-		latest: config.capturePath + '/latest.jpg',
+		latest: config.capturePath + '/latest.jpg', // symlink
 
 		exposure: config.exposure,
 		ev: config.ev != 0 ? config.ev : undefined,
@@ -274,6 +281,28 @@ function generateDaemonArguments() {
 	return raspistillOptionsRaw;
 }
 
+/** @returns {boolean} */
+function isDaemonRunning() {
+	try {
+		const stdout = child_process.execSync('ps -aef | grep "libcamera-still" | grep "\\-\\-timelapse"');
+		return stdout.toString().split('\n').length > 0;
+	} catch (e) {
+		console.error(e);
+		return false;
+	}
+}
+
+/** @returns {boolean} */
+function isCameraAvailable() {
+	try {
+		const stdout = child_process.execSync('libcamera-still --list-cameras');
+		return stdout.toString() !== 'No cameras available!\n';
+	} catch (e) {
+		console.error(e);
+		return false;
+	}
+}
+
 var apiActions = {
 	startCapture: function (data, callback) {
 		if (config.captureDaemonPid !== null) return callback('Capture daemon already running', 400);
@@ -284,7 +313,7 @@ var apiActions = {
 		fs.mkdir(config.capturePath + '/' + config.captureFolder, function (err) {
 			if (err) return callback('Error creating capture folder');
 
-			var child = child_process.spawn('/usr/bin/raspistill', generateDaemonArguments(), {
+			var child = child_process.spawn('/usr/bin/libcamera-still', generateDaemonArguments(), {
 				cwd: config.capturePath,
 				stdio: 'ignore',
 				detached: true,
