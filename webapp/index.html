@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>RaspiCam-Timelapse</title>
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous" />
+	</head>
+
+	<body>
+		<div class="container-xxl py-3">
+			<header class="mb-2 row justify-content-between align-items-center">
+				<h1 class="col-auto">RaspiCam-Timelapse</h1>
+				<div class="spinner-border m-2" role="status" id="busy-indicator">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<div class="col-auto button-group">
+					<button id="start-capture" class="btn btn-success" type="button">Start Capture</button>
+					<button id="stop-capture" class="btn btn-danger" type="button">Stop Capture</button>
+				</div>
+			</header>
+
+			<div id="alert-box" class="alert alert-danger" role="alert" style="display: none"></div>
+
+			<main class="card mb-4">
+				<div class="row g-0">
+					<div class="col-md col-lg-7 col-xl-8">
+						<a href="/full-preview" target="_blank" id="preview-imagelink" class="d-block ratio bg-light">
+							<img id="preview-image" class="card-img text-muted text-center fs-3 lh-sm d-flex justify-content-center align-items-center" alt="Start Capture for Preview" />
+						</a>
+					</div>
+					<div class="col-md col-lg-5 col-xl-4">
+						<div class="card-body">
+							<h5 class="card-title">Status</h5>
+							<table id="status-table" class="table table-sm small mb-0">
+								<tbody>
+									<tr class="status-init">
+										<td class="col-5">Application</td>
+										<td>Initializing…</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</main>
+
+			<aside class="mb-4">
+				<h4>Settings</h4>
+				<div class="card">
+					<nav class="card-header">
+						<ul class="nav nav-tabs card-header-tabs" role="tablist" id="options">
+							<li class="nav-item">
+								<a class="nav-link active" id="options-timelapse-tab" data-bs-toggle="tab" data-bs-target="#options-timelapse" href="#options-timelapse" role="tab">Interval</a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link" id="options-camera-tab" data-bs-toggle="tab" data-bs-target="#options-camera" href="#options-camera" role="tab">Camera</a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link" id="options-image-format-tab" data-bs-toggle="tab" data-bs-target="#options-image-format" href="#options-image-format" role="tab">Image</a>
+							</li>
+						</ul>
+					</nav>
+					<div class="card-body tab-content pb-0" id="optionsContent">
+						<div id="options-timelapse" class="tab-pane active" role="tabpanel">
+							<div class="form-group row mb-3">
+								<label for="option-timelapseInterval" class="col-sm-4 col-md-3 col-form-label">Interval</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<div class="input-group">
+										<input id="option-timelapseInterval" type="text" class="form-control" placeholder="Take picture every …" />
+										<span class="input-group-text">seconds</span>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div id="options-camera" class="tab-pane" role="tabpanel">
+							<div class="form-group row mb-3">
+								<label for="option-exposure" class="col-sm-4 col-md-3 col-form-label">Exposure mode</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<select id="option-exposure" class="form-select">
+										<option value=""></option>
+										<option value="auto">Auto exposure</option>
+										<option value="night">Night shooting</option>
+										<option value="nightpreview">Night preview</option>
+										<option value="backlight">Backlit subject</option>
+										<option value="spotlight">Spotlight</option>
+										<option value="sports">Sports (fast shutter, etc.)</option>
+										<option value="snow">Snowy scenery</option>
+										<option value="beach">Beach</option>
+										<option value="verylong">Long exposure</option>
+										<option value="antishake">Antishake</option>
+										<option value="fireworks">Fireworks</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="form-group row mb-3">
+								<label for="option-ev" class="col-sm-4 col-md-3 col-form-label">EV compensation</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<input id="option-ev" type="text" class="form-control" placeholder="-10 … +10" />
+								</div>
+							</div>
+
+							<div class="form-group row mb-3">
+								<label for="option-iso" class="col-sm-4 col-md-3 col-form-label">ISO</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<select id="option-iso" class="form-select">
+										<option value=""></option>
+										<option value="100">100</option>
+										<option value="200">200</option>
+										<option value="400">400</option>
+										<option value="800">800</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="form-group row mb-3">
+								<label for="option-shutterSpeed" class="col-sm-4 col-md-3 col-form-label">Shutter speed</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<div class="input-group">
+										<span class="input-group-text">1 /</span>
+										<input id="option-shutterSpeed" type="text" class="form-control" />
+										<span class="input-group-text">seconds</span>
+									</div>
+								</div>
+							</div>
+
+							<div class="form-group row mb-3">
+								<label for="option-awb" class="col-sm-4 col-md-3 col-form-label">White balance</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<select id="option-awb" class="form-select">
+										<option value=""></option>
+										<option value="off">Manual WB</option>
+										<option value="auto">Auto (default)</option>
+										<option value="sun">Sunny</option>
+										<option value="cloud">Cloudy</option>
+										<option value="shade">Shade</option>
+										<option value="tungsten">Tungsten lighting</option>
+										<option value="fluorescent">Fluorescent lighting</option>
+										<option value="incandescent">Incandescent lighting</option>
+										<option value="flash">Flash</option>
+										<option value="horizon">Horizon</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="form-group row mb-3">
+								<label for="option-awbRedGain" class="col-sm-4 col-md-3 col-form-label">Manual WB</label>
+								<div class="col-sm-3">
+									<div class="input-group">
+										<span class="input-group-text">Red</span>
+										<input id="option-awbRedGain" type="text" class="form-control" placeholder="i.e. 1.5" />
+									</div>
+								</div>
+								<div class="col-sm-3">
+									<div class="input-group">
+										<span class="input-group-text">Blue</span>
+										<input id="option-awbBlueGain" type="text" class="form-control" placeholder="i.e. 1.2" />
+									</div>
+								</div>
+							</div>
+
+							<div class="form-group row mb-3">
+								<label for="option-hflip" class="col-sm-4 col-md-3 col-form-label">Flip image</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<div class="form-check form-check-inline">
+										<label class="form-check-label">
+											<input class="form-check-input" type="checkbox" id="option-hflip" />
+											Horizontal
+										</label>
+									</div>
+
+									<div class="form-check form-check-inline">
+										<label class="form-check-label">
+											<input class="form-check-input" type="checkbox" id="option-vflip" />
+											Vertical
+										</label>
+									</div>
+
+									<small class="form-text d-block">use both for 180° rotate</small>
+								</div>
+							</div>
+						</div>
+
+						<div id="options-image-format" class="tab-pane" role="tabpanel">
+							<div class="form-group row mb-3">
+								<label for="option-width" class="col-sm-4 col-md-3 col-form-label">Resolution</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<div class="input-group">
+										<input id="option-width" type="text" class="form-control" placeholder="width" />
+										<span class="input-group-text">×</span>
+										<input id="option-height" type="text" class="form-control" placeholder="height" />
+									</div>
+									<small class="form-text d-block">Width × Height</small>
+								</div>
+							</div>
+
+							<div class="form-group row mb-3">
+								<label for="option-thumbnailWidth" class="col-sm-4 col-md-3 col-form-label">Thumbnail resolution</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<div class="input-group">
+										<input id="option-thumbnailWidth" type="text" class="form-control" placeholder="width" />
+										<span class="input-group-text">×</span>
+										<input id="option-thumbnailHeight" type="text" class="form-control" placeholder="height" />
+									</div>
+									<small class="form-text d-block">Width × Height</small>
+								</div>
+							</div>
+
+							<!-- Currently, the "quality"-option does not work in raspistill (it's always 100)
+                        <div class="form-group row mb-3">
+                            <label for="option-width" class="col-sm-4 col-md-3 col-form-label">JPEG quality</label>
+                            <div class="col-sm-3">
+                                <input id="option-jpegQuality" type="text" class="form-control" placeholder="100 = best quality">
+                            </div>
+                        </div>
+                        -->
+
+							<div class="form-group row mb-3">
+								<label for="option-capturePath" class="col-sm-4 col-md-3 col-form-label">Capture path</label>
+								<div class="col-sm-8 col-md-9 col-lg-6">
+									<input id="option-capturePath" type="text" class="form-control" placeholder="/home/pi/capture" />
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="card-footer">
+						<button id="save-config" class="btn btn-primary btn-sm" type="button">Save</button>
+						<button id="reset-config" class="btn btn-outline-secondary btn-sm" type="button">Reset</button>
+					</div>
+				</div>
+			</aside>
+
+			<footer class="text-muted">
+				<small>&copy; 2021. <a href="https://github.com/not-implemented/raspicam-timelapse" target="_blank" class="text-reset">View on GitHub</a></small>
+			</footer>
+		</div>
+
+		<!-- TODO: refactor to remove jquery -->
+		<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+		<script src="timelapse.js"></script>
+	</body>
+</html>
