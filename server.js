@@ -13,7 +13,7 @@ const ExifImage = require('exif').ExifImage;
 // const vcgencmd = require('vcgencmd');
 const vcgencmd = {
 	getCamera: () => {
-		return { detected: false };
+		return { detected: true };
 	},
 	measureTemp: () => NaN,
 };
@@ -23,7 +23,7 @@ const configFilename = __dirname + '/config.json';
 var config = {
 	isCapturing: false,
 	captureDaemonPid: null,
-	capturePath: __dirname + '/../capture',
+	capturePath: '/home/pi/capture',
 	captureFolder: 'default',
 	timelapseInterval: 10,
 	exposure: 'auto',
@@ -67,8 +67,40 @@ function saveConfig(callback) {
 
 var mounts = [
 	st({
+		// path: __dirname + '/../capture',
+		path: config.capturePath, // fixme: update when path changed in ui
+		cache: { // specify cache:false to turn off caching entirely
+			fd: {
+				max: 1000, // number of fd's to hang on to
+				maxAge: 1000*60*60,
+			},
+			stat: {
+				max: 5000, // number of stat objects to hang on to
+				maxAge: 1000 * 60,
+			},
+			content: {
+				max: 1024*1024*64, // how much memory to use on caching contents
+				maxAge: 1000 * 60 * 10,
+				cacheControl: 'public, max-age=600'
+			},
+			index: {
+				max: 1024 * 8, // how many bytes of autoindex html to cache
+				maxAge: 1000 * 60 * 10,
+			},
+			readdir: {
+				max: 1000, // how many dir entries to cache
+				maxAge: 1000 * 60 * 10,
+			}
+		},
+		url: '/capture',
+		index: true,
+		autoindex: true,
+		passthrough: true,
+	}),
+	st({
 		path: __dirname + '/webapp',
 		index: 'index.html',
+		passthrough: true,
 	}),
 ];
 
@@ -157,7 +189,7 @@ function updateStatus(partial) {
 	if (!cameraDetected) {
 		status.captureMode.value = 'No camera detected';
 		status.captureMode.type = 'danger';
-	} else if (!config.isCapturing) {
+	} else if (!config.isCapturing || !isDaemonRunning()) {
 		status.captureMode.value = 'Not capturing';
 		status.captureMode.type = 'danger';
 	} else {
@@ -272,6 +304,17 @@ function generateDaemonArguments() {
 	}
 
 	return raspistillOptionsRaw;
+}
+
+/** @returns {boolean} */
+function isDaemonRunning() {
+	try {
+		const stdout = child_process.execSync('ps -aef | grep "raspicam" | grep "\\-\\-timelapse"');
+		return stdout.toString().split('\n').length > 0;
+	} catch (e) {
+		console.error(e);
+		return false;
+	}
 }
 
 var apiActions = {
