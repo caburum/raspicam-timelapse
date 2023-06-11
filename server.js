@@ -69,19 +69,20 @@ var mounts = [
 	st({
 		// path: __dirname + '/../capture',
 		path: config.capturePath, // fixme: update when path changed in ui
-		cache: { // specify cache:false to turn off caching entirely
+		// specify cache:false to turn off caching entirely
+		cache: {
 			fd: {
 				max: 1000, // number of fd's to hang on to
-				maxAge: 1000*60*60,
+				maxAge: 1000 * 60 * 60,
 			},
 			stat: {
 				max: 5000, // number of stat objects to hang on to
 				maxAge: 1000 * 60,
 			},
 			content: {
-				max: 1024*1024*64, // how much memory to use on caching contents
+				max: 1024 * 1024 * 64, // how much memory to use on caching contents
 				maxAge: 1000 * 60 * 10,
-				cacheControl: 'public, max-age=600'
+				cacheControl: 'public, max-age=600',
 			},
 			index: {
 				max: 1024 * 8, // how many bytes of autoindex html to cache
@@ -90,9 +91,9 @@ var mounts = [
 			readdir: {
 				max: 1000, // how many dir entries to cache
 				maxAge: 1000 * 60 * 10,
-			}
+			},
 		},
-		url: '/capture',
+		url: '/capture/',
 		index: true,
 		autoindex: true,
 		passthrough: true,
@@ -463,6 +464,12 @@ var server = http.createServer((request, response) => {
 		} else if (url.pathname === '/full-preview') {
 			fs.createReadStream(previewImageName).pipe(response);
 		}
+		return;
+	}
+
+	if (url.pathname === '/capture') {
+		response.writeHead(301, { Location: '/capture/' });
+		response.end();
 		return;
 	}
 
