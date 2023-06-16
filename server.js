@@ -310,17 +310,17 @@ function generateDaemonArguments() {
 /** @returns {boolean} */
 function isDaemonRunning() {
 	try {
-		const stdout = child_process.execSync('ps -aef | grep "raspicam" | grep "\\-\\-timelapse"');
+		const stdout = child_process.execSync('ps -aef | grep "raspistill" | grep "\\-\\-timelapse"');
 		return stdout.toString().split('\n').length > 0;
 	} catch (e) {
-		console.error(e);
+		// console.error(e);
 		return false;
 	}
 }
 
 var apiActions = {
 	startCapture: function (data, callback) {
-		if (config.captureDaemonPid !== null) return callback('Capture daemon already running', 400);
+		if (config.captureDaemonPid !== null && isDaemonRunning()) return callback('Capture daemon already running', 400);
 
 		config.isCapturing = true;
 		config.captureFolder = formatDate(new Date()).replace(/:/g, '.');
@@ -333,6 +333,7 @@ var apiActions = {
 				stdio: 'ignore',
 				detached: true,
 			});
+			console.log(child);
 			config.captureDaemonPid = child.pid;
 			child.unref();
 
