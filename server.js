@@ -190,9 +190,12 @@ function updateStatus(partial) {
 	if (!cameraDetected) {
 		status.captureMode.value = 'No camera detected';
 		status.captureMode.type = 'danger';
-	} else if (!config.isCapturing || !isDaemonRunning()) {
-		status.captureMode.value = 'Not capturing';
+	} else if (!isDaemonRunning()) {
+		status.captureMode.value = 'Not capturing, daemon not running';
 		status.captureMode.type = 'danger';
+	} else if (!config.isCapturing) {
+		status.captureMode.value = 'Daemon running but shouldn\'t';
+		status.captureMode.type = 'warning';
 	} else {
 		status.captureMode.value = 'Capturing (' + (config.captureDaemonPid !== null ? 'PID ' + config.captureDaemonPid : 'No active process!') + ')';
 		status.captureMode.type = config.captureDaemonPid !== null ? 'success' : 'warning';
