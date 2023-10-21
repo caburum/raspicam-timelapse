@@ -37,8 +37,8 @@ var config = {
 	vflip: false,
 	width: 1920,
 	height: 1080,
-	thumbnailWidth: 480,
-	thumbnailHeight: 270,
+	thumbnailWidth: 1280/2,
+	thumbnailHeight: 720/2,
 	jpegQuality: 100,
 };
 
@@ -86,11 +86,11 @@ var mounts = [
 			},
 			index: {
 				max: 1024 * 8, // how many bytes of autoindex html to cache
-				maxAge: 1000 * 60 * 10,
+				maxAge: 1000 * 60,
 			},
 			readdir: {
 				max: 1000, // how many dir entries to cache
-				maxAge: 1000 * 60 * 10,
+				maxAge: 1000 * 60,
 			},
 		},
 		url: '/capture/',
@@ -191,7 +191,7 @@ function updateStatus(partial) {
 		status.captureMode.value = 'No camera detected';
 		status.captureMode.type = 'danger';
 	} else if (!isDaemonRunning()) {
-		status.captureMode.value = 'Not capturing, daemon not running';
+		status.captureMode.value = 'Not capturing (' + (config.isCapturing ? 'but should' : 'good') + '), daemon not running';
 		status.captureMode.type = 'danger';
 	} else if (!config.isCapturing) {
 		status.captureMode.value = 'Daemon running but shouldn\'t';
@@ -336,7 +336,7 @@ var apiActions = {
 				stdio: 'ignore',
 				detached: true,
 			});
-			console.log(child);
+			console.log('created child process', child, child.pid);
 			config.captureDaemonPid = child.pid;
 			child.unref();
 
@@ -350,10 +350,15 @@ var apiActions = {
 	stopCapture: function (data, callback) {
 		config.isCapturing = false;
 
-		if (config.captureDaemonPid !== null) {
+		if (config.captureDaemonPid !== null || isDaemonRunning()) {
 			try {
-				process.kill(config.captureDaemonPid, 'SIGKILL');
-				config.captureDaemonPid = null;
+				try {
+					process.kill(config.captureDaemonPid, 'SIGKILL');
+					config.captureDaemonPid = null;
+				} catch (err2) {
+					console.log('stop, trying to kill all');
+					child_process.execSync('pkill -f raspistill');
+				}
 			} catch (err) {
 				console.error(err);
 				callback({ error: err.message }, 500);
@@ -393,9 +398,16 @@ var apiActions = {
 if (config.captureDaemonPid !== null) {
 	// check if process still exists:
 	try {
+		console.log('checking process', config.captureDaemonPid);
 		process.kill(config.captureDaemonPid, 0);
 	} catch (err) {
+		console.log('process not alive');
 		config.captureDaemonPid = null;
+		try {
+			child_process.execSync('pkill -f raspistill');
+		} catch (err) {
+			console.log('error killing all', err);
+		}
 	}
 }
 if (config.isCapturing && config.captureDaemonPid === null) {
