@@ -313,8 +313,12 @@ function generateDaemonArguments() {
 /** @returns {boolean} */
 function isDaemonRunning() {
 	try {
-		const stdout = child_process.execSync('ps -aef | grep "raspistill" | grep "\\-\\-timelapse"');
-		return stdout.toString().split('\n').length > 0;
+		// const stdout = child_process.execSync('ps -aef | grep "raspistill" | grep "\\-\\-timelapse"');
+		// return stdout.toString().split('\n').length > 0;
+
+		const stdout = child_process.execSync('systemctl is-active --user timelapse-raspistill');
+		console.log(`daemon status '${stdout}'`);
+		return stdout.trim() == 'active';
 	} catch (e) {
 		// console.error(e);
 		return false;
@@ -323,7 +327,7 @@ function isDaemonRunning() {
 
 var apiActions = {
 	startCapture: function (data, callback) {
-		if (config.captureDaemonPid !== null && isDaemonRunning()) return callback('Capture daemon already running', 400);
+		if (/*config.captureDaemonPid !== null &&*/ isDaemonRunning()) return callback('Capture daemon already running', 400);
 
 		config.isCapturing = true;
 		config.captureFolder = formatDate(new Date()).replace(/:/g, '.');
@@ -331,27 +335,40 @@ var apiActions = {
 		fs.mkdir(config.capturePath + '/' + config.captureFolder, function (err) {
 			if (err) return callback('Error creating capture folder');
 
-			var child = child_process.spawn('/usr/bin/raspistill', generateDaemonArguments(), {
-				cwd: config.capturePath,
-				stdio: 'ignore',
-				detached: true,
-			});
-			console.log('created child process', child, child.pid);
-			config.captureDaemonPid = child.pid;
-			child.unref();
+			var arg = generateDaemonArguments().map(s => s.startsWith('--') ? s : (`'` + s.replace(/'/g, `'"'`) + `'`)).join(' ');
+			fs.writeFile('/tmp/timelapse-raspistill-env', 'RASPISTILL_ARGS=' + arg, function(err) {
+				if (err) return callback('Error creating service env file');
 
-			saveConfig(function (err) {
-				if (err) return callback('Error saving config');
-				updateStatus(true);
-				callback(status, 200);
+				// var child = child_process.spawn('/usr/bin/raspistill', generateDaemonArguments(), {
+				// 	cwd: config.capturePath,
+				// 	stdio: 'ignore',
+				// 	detached: true,
+				// });
+				// console.log('created child process', child, child.pid);
+				// config.captureDaemonPid = child.pid;
+				// child.unref();
+
+				try {
+					var cmd = '/usr/bin/systemctl restart --user timelapse-raspistill';
+					console.log('cmd', cmd);
+					child_process.exec(cmd);
+				} catch (err) {
+					return callback('Error starting service, ' + err);
+				}
+
+				saveConfig(function (err) {
+					if (err) return callback('Error saving config');
+					updateStatus(true);
+					callback(status, 200);
+				});
 			});
 		});
 	},
 	stopCapture: function (data, callback) {
 		config.isCapturing = false;
 
-		if (config.captureDaemonPid !== null || isDaemonRunning()) {
-			try {
+		if (/*config.captureDaemonPid !== null ||*/ isDaemonRunning()) {
+			/*try {
 				try {
 					process.kill(config.captureDaemonPid, 'SIGKILL');
 					config.captureDaemonPid = null;
@@ -362,7 +379,8 @@ var apiActions = {
 			} catch (err) {
 				console.error(err);
 				callback({ error: err.message }, 500);
-			}
+			}*/
+			child_process.exec('systemctl stop --user timelapse-raspistill');
 		}
 
 		saveConfig(function (err) {
@@ -395,7 +413,7 @@ var apiActions = {
 	},
 };
 
-if (config.captureDaemonPid !== null) {
+/*if (config.captureDaemonPid !== null) {
 	// check if process still exists:
 	try {
 		console.log('checking process', config.captureDaemonPid);
@@ -409,9 +427,11 @@ if (config.captureDaemonPid !== null) {
 			console.log('error killing all', err);
 		}
 	}
-}
-if (config.isCapturing && config.captureDaemonPid === null) {
+}*/
+if (config.isCapturing) {
 	apiActions['startCapture']({}, function () {});
+} else {
+	child_process.exec('systemctl stop --user timelapse-raspistill');
 }
 
 var server = http.createServer((request, response) => {
