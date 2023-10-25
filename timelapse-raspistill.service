@@ -1,0 +1,8 @@
+[Unit]
+Description=raspicam-timelapse raspistill instance
+
+[Service]
+EnvironmentFile=/tmp/timelapse-raspistill-env
+ExecStartPre=/usr/bin/echo $RASPISTILL_ARGS
+ExecStart=/usr/bin/raspistill $RASPISTILL_ARGS
+#User=pi

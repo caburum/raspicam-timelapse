@@ -1,0 +1,13 @@
+[Unit]
+Description=raspicam-timelapse
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node server.js
+WorkingDirectory=/home/pi/raspicam-timelapse
+Restart=always
+#User=pi
+
+[Install]
+WantedBy=multi-user.target
