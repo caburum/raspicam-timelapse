@@ -303,7 +303,7 @@ function generateDaemonArguments() {
 		if (typeof raspistillOptions[name] === 'undefined') continue;
 		raspistillOptionsRaw.push('--' + name);
 		if (raspistillOptions[name] !== null) {
-			raspistillOptionsRaw.push('\'' + raspistillOptions[name].replace(/'/g, `'"'`) + '\'');
+			raspistillOptionsRaw.push('\'' + raspistillOptions[name].toString()?.replace(/'/g, `'"'`) + '\'');
 		}
 	}
 
@@ -316,9 +316,9 @@ function isDaemonRunning() {
 		// const stdout = child_process.execSync('ps -aef | grep "raspistill" | grep "\\-\\-timelapse"');
 		// return stdout.toString().split('\n').length > 0;
 
-		const stdout = child_process.execSync('systemctl is-active --user timelapse-raspistill');
-		// console.log(`daemon status '${stdout}'`);
-		return stdout.startsWith('active');
+		const stdout = child_process.execSync('systemctl is-active --user timelapse-raspistill').toString();
+		// console.log(`daemon status ${JSON.stringify(stdout)}`);
+		return stdout?.startsWith?.('active') || false;
 	} catch (e) {
 		// console.error(e);
 		return false;
@@ -332,9 +332,11 @@ var apiActions = {
 		config.isCapturing = true;
 		config.captureFolder = formatDate(new Date()).replace(/:/g, '.');
 
+		console.log('creating folder');
 		fs.mkdir(config.capturePath + '/' + config.captureFolder, function (err) {
 			if (err) return callback('Error creating capture folder');;
-			fs.writeFile('/tmp/timelapse-raspistill-env', 'RASPISTILL_ARGS=' + arg, function(err) {
+			console.log('writing env args');
+			fs.writeFile('/tmp/timelapse-raspistill-env', 'RASPISTILL_ARGS=' + generateDaemonArguments(), function(err) {
 				if (err) return callback('Error creating service env file');
 
 				// var child = child_process.spawn('/usr/bin/raspistill', generateDaemonArguments(), {
@@ -348,12 +350,13 @@ var apiActions = {
 
 				try {
 					var cmd = '/usr/bin/systemctl restart --user timelapse-raspistill';
-					console.log('cmd', cmd);
+					console.log('spawning cmd', cmd);
 					child_process.exec(cmd);
 				} catch (err) {
 					return callback('Error starting service, ' + err);
 				}
 
+				console.log('saving config');
 				saveConfig(function (err) {
 					if (err) return callback('Error saving config');
 					updateStatus(true);
